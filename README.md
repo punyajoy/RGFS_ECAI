@@ -10,16 +10,12 @@ Abusive language is a concerning problem in online social media. Past research o
 
 ~~~bibtex
 
-@inproceedings{mathew2021hatexplain,
-  title={HateXplain: A Benchmark Dataset for Explainable Hate Speech Detection},
-  author={Mathew, Binny and Saha, Punyajoy and Yimam, Seid Muhie and Biemann, Chris and Goyal, Pawan and Mukherjee, Animesh},
-  booktitle={Proceedings of the AAAI Conference on Artificial Intelligence},
-  volume={35},
-  number={17},
-  pages={14867--14875},
-  year={2021}
+@article{saha2022raft,
+  title={RAFT: Rationale adaptor for few-shot abusive language detection},
+  author={Saha, Punyajoy and Sheth, Divyanshu and Kedia, Kushal and Mathew, Binny and Mukherjee, Animesh},
+  journal={arXiv preprint arXiv:2211.17046},
+  year={2022}
 }
-
 
 ~~~
 
