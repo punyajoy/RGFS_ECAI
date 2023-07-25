@@ -6,10 +6,8 @@ from Model_code.utils import *
 from Eval_code.eval_scripts import *
 from transformers import AutoTokenizer, AutoModelForTokenClassification, AdamW, get_linear_schedule_with_warmup, BertConfig
 import neptune.new as neptune
-# import GPUtil
 import numpy as np
 from datasets import list_datasets, load_dataset
-# from apiconfig import *
 import pandas as pd
 from tqdm import tqdm
 import argparse
@@ -17,12 +15,9 @@ import json
 import time
 import datetime
 import pprint
-## training_type can take normal, domain_adap, domain_adap_ssda
-## dataset Hatexplain, Founta, Davidson
-## model_path: model path as given in the huggingface
-## logging: 'neptune' or 'local' (for printing the updates here)
-## model_type: 'c' for classifier, 'r' is for rational_classifier, 't' is for target_classifier
 
+
+#classes in the diff
 classes_in_dataset = {
     'Davidson': 3,
     'Founta': 3,
@@ -32,31 +27,19 @@ classes_in_dataset = {
     'Waseem':2
 }
 
-# datasets_labels_map = {
-#     "Founta": {"normal": 0, "hateful": 1, "abusive": 2},
-#     "Olid": {"NOT": 0, "OFF": 1},
-#     "Davidson": {"normal": 0, "hateful": 1, "offensive": 2},
-#     "MLMA": {"normal": 0, "hateful": 1, "offensive": 2, "abusive": 3, "fearful": 4, "disrespectful": 5,},
-#     "Basile": {"normal": 0, "hateful": 1}
-# }
-
-api_token='eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiI1N2U3ZjlmNi1iYTFiLTQxZTctYWQ4ZC1iYzFhZDE5M2NmN2MifQ=='
-project_name='Domain-Adaptation'
-
 params={
  'dataset': None,
  'training_points': None, # CHANGE
-#  'model_path':'Saved_Models/Domain_Adapt_New/DA_GD/Basile_50TP_2021RS_bert.pt', # CHANGE
  'model_path': 'bert-base-uncased',        # CHANGE
  'model_type': None,      # CHANGE
  'training_type': 'normal',
  'logging': 'local',
- 'data_seed': None, # CHANGE
+ 'data_seed': None,
  'cache_path':'../../Saved_models/',
  'learning_rate':1e-5,
  'device':'cuda',
  'num_classes': -1,
- 'epochs': 20, # CHANGE
+ 'epochs': 20,
  'batch_size':16,
  'rationale_impact': 10,
  'attn_lambda':1,
