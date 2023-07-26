@@ -390,5 +390,4 @@ if __name__ == "__main__":
 
     else:
         print('Since you dont want to use GPU, using the CPU instead.')
-        device = torch.device("cpu")    
-    
+        device = torch.device("cpu")        
