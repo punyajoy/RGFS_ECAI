@@ -9,7 +9,6 @@ import neptune.new as neptune
 import GPUtil
 import numpy as np
 from datasets import list_datasets, load_dataset
-# from apiconfig import *
 import pandas as pd
 from tqdm import tqdm
 import argparse
@@ -39,16 +38,9 @@ classes_in_dataset = {
     'Founta': 3,
     'Basile': 2,
     'Olid': 2,
-    'MLMA': 5,
     'Waseem':2
 }
 
-
-
-
-
-# reverse_dict_2={0:"normal",1:"abusive"}
-# reverse_dict_3={0:"normal",1:"hatespeech",2:"abusive"}
 datasets_labels_map = {
     "Founta": {
         "normal": 0,
@@ -64,14 +56,6 @@ datasets_labels_map = {
         "hateful": 1,
         "offensive": 2
     },
-    "MLMA": {
-        "normal": 0,
-        "hateful": 1,
-        "offensive": 2,
-        "abusive": 3,
-        "fearful": 4,
-        "disrespectful": 5,
-    },
     "Basile": {
         "normal": 0,
         "hateful": 1
@@ -86,13 +70,12 @@ datasets_labels_map = {
 params={
  'dataset': None,
  'training_points': None, # CHANGE
-#  'model_path':'Saved_Models/Domain_Adapt_New/Transform_Rationale_CrossAttn_CLS_2Softmax/model_weights.pt', # CHANGE
  'model_path': 'bert-base-uncased',        # CHANGE
  'model_type': None,      # CHANGE
  'training_type': 'normal',
  'logging': 'local',
  'data_seed': None, # CHANGE
- 'cache_path':'/home/punyajoy/HULK/Saved_models/',
+ 'cache_path':'../Saved_models/',
  'learning_rate':1e-5,
  'device':'cuda',
  'num_classes': -1,
@@ -108,12 +91,14 @@ params={
  'random_rationales': False,
 }
 
+
+### this is a file to test the model with LIME
 class modelPred_lime():
-    def __init__(self, model_path = os.path.join('Saved_Models/Domain_Adapt_New/DA/', 'Olid', '50', '2021', 'Transform_Rationale_CrossAttn_CLS_Drpt_corrected' 'model_weights.pt')):
+    def __init__(self, model_path = None)):
         self.device = torch.device("cuda")
         self.model_path = model_path
 
-        rationale_predictor_model = Model_Rational_Label.from_pretrained("Saved_Models/Best_Toxic_BERT/BERT_toxic_rationale_2", params={'num_classes':2, 'rationale_impact':10,'target_impact':0,'targets_num':22},output_attentions = True,output_hidden_states = False).to(params['device'])
+        rationale_predictor_model = Model_Rational_Label.from_pretrained("rationale_predictor", params={'num_classes':2, 'rationale_impact':10,'target_impact':0,'targets_num':22},output_attentions = True,output_hidden_states = False).to(params['device'])
         self.rationale_predictor = modelPred(params=params, model=rationale_predictor_model)
         print("Loading pretrained model from " + str(self.model_path) + "...")
         pretrained_dict = torch.load(self.model_path)
@@ -136,11 +121,6 @@ class modelPred_lime():
 
         self.model.cuda()  
         self.model.eval()
-    
-    # def process_path(self, model_path):
-    #     model_name = model_path.split('/')[3]
-    #     model_type = model_name.split('_')[2]
-    #     return model_type
         
         
     def preprocess_func(self, text):
@@ -153,7 +133,6 @@ class modelPred_lime():
     
     def tokenize(self, sentences, padding = True, max_len = 128):
         input_ids, attention_masks, token_type_ids, rationales = [], [], [], []
-        # self.tokenizer = AutoTokenizer.from_pretrained(self.model_path, use_fast = False)
         self.tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased')
         for sent in sentences:
             encoded_dict = self.tokenizer.encode_plus(sent,
@@ -236,13 +215,6 @@ def get_training_data(dict_map,model_path):
     count=0
     for key in tqdm(dict_map.keys()):
         annotation=dict_map[key]['label']
-        
-#         if(count>100):
-#             break
-        
-#         if(annotation=='normal' or annotation=='NOT'):
-#             continue
-        
         count+=1
         text=dict_map[key]['text']
         post_id=key
@@ -313,18 +285,8 @@ def transform_attention(exp_list):
 def standaloneEval_with_lime(model_to_use, dataset_name, test_data=None, topk=2, rational=False):
     reverse_dict={datasets_labels_map[dataset_name][key]:key for key in datasets_labels_map[dataset_name].keys()}
     explainer = LimeTextExplainer(class_names=list(datasets_labels_map[dataset_name].keys()),split_expression='\s+',random_state=333,bow=False)
-    print(dataset_name)
+    print(dataset_name) 
     
-    print(reverse_dict)
-#     if classes_in_dataset[dataset_name] == 2:
-#         reverse_dict={0:'normal',1:'abusive'}
-#         explainer = LimeTextExplainer(class_names=list(datasets_labels_map[dataset_name].keys()),split_expression='\s+',random_state=333,bow=False)
-#     elif classes_in_dataset[dataset_name] == 3:
-#         reverse_dict={0:'normal',1:'hateful', 2: 'abusive'}
-#         explainer = LimeTextExplainer(class_names=['Normal', 'Hateful', 'Abusive'],split_expression='\s+',random_state=333,bow=False)
-    
-    
-    # tokenizer = AutoTokenizer.from_pretrained(model_to_use, use_fast = False)
     tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased')
     
     list_dict=[]
@@ -376,12 +338,6 @@ def standaloneEval_with_lime(model_to_use, dataset_name, test_data=None, topk=2,
         print(exp.predict_proba[0])
         temp["classification_scores"]=temp_preds
         
-        
-#         if classes_in_dataset[dataset_name] == 2:
-#             temp["classification_scores"]={"normal":exp.predict_proba[0], "abusive":exp.predict_proba[1]}
-#         elif classes_in_dataset[dataset_name] == 3:
-#             temp["classification_scores"]={"normal":exp.predict_proba[0], "hateful":exp.predict_proba[1], "abusive":exp.predict_proba[2]}
-
         attention = [0]*len(sentence.split(" "))
 
         explanation = exp.as_map()[pred_id]
@@ -395,7 +351,6 @@ def standaloneEval_with_lime(model_to_use, dataset_name, test_data=None, topk=2,
             for j in range(len(temp_tokens)):
                  final_explanation.append(attention[i])
         final_explanation.append(0)
-        #attention = softmax(final_explanation)
         attention = transform_attention(final_explanation)
         
         
@@ -429,8 +384,7 @@ def standaloneEval_with_lime(model_to_use, dataset_name, test_data=None, topk=2,
         temp["rationales"]=[{"docid": row['id'], 
                                  "hard_rationale_predictions": temp_hard_rationales, 
                                  "soft_rationale_predictions": attention,
-                                 #"soft_sentence_predictions":[1.0],
-                                 "truth":0}]
+                                  "truth":0}]
         list_dict.append(temp)
 
        
@@ -440,12 +394,7 @@ def standaloneEval_with_lime(model_to_use, dataset_name, test_data=None, topk=2,
 
 def standaloneEval(model_to_use, dataset_name, test_data=None, topk=2, rational=False):
     reverse_dict={datasets_labels_map[dataset_name][key]:key for key in datasets_labels_map[dataset_name].keys()}
-    
-#     if classes_in_dataset[dataset_name] == 2:
-#         reverse_dict={0:'normal',1:'abusive'}
-#     elif classes_in_dataset[dataset_name] == 3:
-#         reverse_dict={0:'normal',1:'hateful', 2: 'abusive'}
-        
+       
     tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased')
     
     list_dict=[]
@@ -491,12 +440,6 @@ def get_final_dict_with_lime(model_name, dataset_name, test_data, topk):
         ele1['sufficiency_classification_scores']=ele2['classification_scores']
         ele1['comprehensiveness_classification_scores']=ele3['classification_scores']
         final_list_dict.append(ele1)
-#     for ele1 in list_dict_org:
-#         ### these are just dummy results
-#         ele1['sufficiency_classification_scores']=ele1['classification_scores']
-#         ele1['comprehensiveness_classification_scores']=ele1['classification_scores']
-#         final_list_dict.append(ele1)
-
     return final_list_dict
 
 class NumpyEncoder(json.JSONEncoder):
@@ -550,7 +493,7 @@ if __name__ == '__main__':
 
     dataset=args.dataset_name
     params['num_classes'] = classes_in_dataset[args.dataset_name]
-    dataset_path='Dataset/Test_data/'+dataset+'_test_new.json'
+    dataset_path='Datasets/Test_data/'+dataset+'_test_new.json'
     model_name=args.model_name
     training_points=args.training_points
     random_seed=args.random_seed
@@ -568,12 +511,3 @@ if __name__ == '__main__':
     final_dict=get_final_dict_with_lime(model_path, args.dataset_name, test_data, topk=5)
     print("--- %s seconds per iteration ---" % (time.time() - start_time))
     print(len(test_data))
-
-#     try:
-#         final_dict=get_final_dict_with_lime(model_path,test_data,topk=5)
-#     except OSError:
-#         exit()
-#     path_name_explanation='explanation_dicts/'+dataset+'_'+model_name+'_'+str(random_seed)+'_'+str(training_points)+'.json'
-#     with open(path_name_explanation, 'w') as fp:
-#         fp.write('\n'.join(json.dumps(i,cls=NumpyEncoder) for i in final_dict))
-

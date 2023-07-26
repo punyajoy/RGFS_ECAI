@@ -54,7 +54,6 @@ classes_in_dataset = {
     'Founta': 3,
     'Basile': 2,
     'Olid': 2,
-    'MLMA': 5,
     'Waseem':2
 }
 
@@ -67,10 +66,6 @@ def masked_softmax(vec, mask, dim=1):
     zeros=(masked_sums == 0)
     masked_sums += zeros.float()
     return masked_exps/masked_sums
-
-
-
-
 
 
 
@@ -91,14 +86,6 @@ datasets_labels_map = {
         "hateful": 1,
         "offensive": 2
     },
-    "MLMA": {
-        "normal": 0,
-        "hateful": 1,
-        "offensive": 2,
-        "abusive": 3,
-        "fearful": 4,
-        "disrespectful": 5,
-    },
     "Basile": {
         "normal": 0,
         "hateful": 1
@@ -112,7 +99,6 @@ datasets_labels_map = {
 params={
  'dataset': None,
  'training_points': None, # CHANGE
-#  'model_path':'Saved_Models/Domain_Adapt_New/Transform_Rationale_CrossAttn_CLS_2Softmax/model_weights.pt', # CHANGE
  'model_path': 'bert-base-uncased',        # CHANGE
  'model_type': None,      # CHANGE
  'training_type': 'normal',
@@ -163,11 +149,7 @@ class modelPred_lime():
         self.model.cuda()  
         self.model.eval()
     
-    # def process_path(self, model_path):
-    #     model_name = model_path.split('/')[3]
-    #     model_type = model_name.split('_')[2]
-    #     return model_type
-        
+       
         
     def preprocess_func(self, text):
         remove_words=['<allcaps>','</allcaps>','<hashtag>','</hashtag>','<elongated>','<emphasis>','<repeated>','\'','s']
@@ -179,7 +161,6 @@ class modelPred_lime():
     
     def tokenize(self, sentences, padding = True, max_len = 128):
         input_ids, attention_masks, token_type_ids, rationales = [], [], [], []
-        # self.tokenizer = AutoTokenizer.from_pretrained(self.model_path, use_fast = False)
         self.tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased')
         for sent in sentences:
             encoded_dict = self.tokenizer.encode_plus(sent,
@@ -253,10 +234,7 @@ class modelPred_lime():
         logits_all_final=[]
         for logits in logits_all:
             logits_all_final.append(list(softmax(logits)))
-        # if self.flip:
-        #     logits_array = np.array(logits_all_final)
-        #     logits_array[:,[0, 1]] = logits_array[:,[1, 0]]
-        #     return logits_array
+       
         return np.array(logits_all_final),np.array(rationales_all)
         
 def get_training_data(dict_map,model_path):
@@ -280,9 +258,7 @@ def convert_data(test_data,params,list_dict,rational_present=True,topk=2):
     
     temp_dict={}
     for ele in list_dict:
-#         if((ele['classification']=='normal') or (ele['classification']=='NOT')):
-#             temp_dict[ele['annotation_id']]=[1-tok for tok in ele['rationales'][0]['soft_rationale_predictions']]
-#         else:
+
         temp_dict[ele['annotation_id']]=ele['rationales'][0]['soft_rationale_predictions']
     test_data_modified=[]
     
@@ -356,8 +332,7 @@ def standaloneEval_with_rationale(model_to_use, dataset_name, test_data=None, to
         tokens=tokenizer.convert_ids_to_tokens(row['tokens'])[1:-1]
         sentence=tokenizer.convert_tokens_to_string(tokens)
         temp={}
-        #pred_id=np.argmax(all_probab[index])
-        
+           
         
         pred_id=0
         max_pred=0
@@ -382,29 +357,10 @@ def standaloneEval_with_rationale(model_to_use, dataset_name, test_data=None, to
         temp["classification_scores"]=temp_preds
         
         
-#         if classes_in_dataset[dataset_name] == 2:
-#             temp["classification_scores"]={"normal":exp.predict_proba[0], "abusive":exp.predict_proba[1]}
-#         elif classes_in_dataset[dataset_name] == 3:
-#             temp["classification_scores"]={"normal":exp.predict_proba[0], "hateful":exp.predict_proba[1], "abusive":exp.predict_proba[2]}
 
-#         attention = [0]*len(sentence.split(" "))
-
-#         explanation = exp.as_map()[pred_id]
-#         for exp in explanation:
-#             attention[exp[0]]=exp[1]
-                
-#         final_explanation=[0]
-#         tokens=sentence.split(" ")
-#         for i in range(len(tokens)):
-#             temp_tokens=tokenizer.encode(tokens[i],add_special_tokens = False)
-#             for j in range(len(temp_tokens)):
-#                  final_explanation.append(attention[i])
-#         final_explanation.append(0)
-        #attention = softmax(final_explanation)
         print(all_rationales[index])
         attention = transform_attention(all_rationales[index])
         print(attention)
-        # if(rational==False):
         
         if(rational==False):
             print('Id',row['id'])
@@ -436,7 +392,6 @@ def standaloneEval_with_rationale(model_to_use, dataset_name, test_data=None, to
         temp["rationales"]=[{"docid": row['id'], 
                                  "hard_rationale_predictions": temp_hard_rationales, 
                                  "soft_rationale_predictions": attention,
-                                 #"soft_sentence_predictions":[1.0],
                                  "truth":0}]
         list_dict.append(temp)
 
@@ -447,11 +402,6 @@ def standaloneEval_with_rationale(model_to_use, dataset_name, test_data=None, to
 
 def standaloneEval(model_to_use, dataset_name, test_data=None, topk=2, rational=False):
     reverse_dict={datasets_labels_map[dataset_name][key]:key for key in datasets_labels_map[dataset_name].keys()}
-    
-#     if classes_in_dataset[dataset_name] == 2:
-#         reverse_dict={0:'normal',1:'abusive'}
-#     elif classes_in_dataset[dataset_name] == 3:
-#         reverse_dict={0:'normal',1:'hateful', 2: 'abusive'}
         
     tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased')
     
@@ -498,12 +448,6 @@ def get_final_dict_with_lime(model_name, dataset_name, test_data, topk):
         ele1['sufficiency_classification_scores']=ele2['classification_scores']
         ele1['comprehensiveness_classification_scores']=ele3['classification_scores']
         final_list_dict.append(ele1)
-#     for ele1 in list_dict_org:
-#         ### these are just dummy results
-#         ele1['sufficiency_classification_scores']=ele1['classification_scores']
-#         ele1['comprehensiveness_classification_scores']=ele1['classification_scores']
-#         final_list_dict.append(ele1)
-
     return final_list_dict
 
 class NumpyEncoder(json.JSONEncoder):
@@ -558,14 +502,8 @@ if __name__ == '__main__':
     if torch.cuda.is_available() and params['device']=='cuda':    
         # Tell PyTorch to use the GPU.    
         device = torch.device("cuda")
-        ##### You can set the device manually if you have only one gpu
-        ##### comment this line if you don't want to manually set the gpu
-        deviceID = get_gpu(0)
-        torch.cuda.set_device(deviceID[0])
-        ##### comment this line if you want to manually set the gpu
         #### required parameter is the gpu id
-        #torch.cuda.set_device(0)
-#        torch.cuda.set_device(0)
+        torch.cuda.set_device(0)
     else:
         print('Since you dont want to use GPU, using the CPU instead.')
         device = torch.device("cpu")
@@ -592,12 +530,3 @@ if __name__ == '__main__':
     final_dict=get_final_dict_with_lime(model_path, args.dataset_name, test_data, topk=5)
     print("--- %s seconds per iteration ---" % (time.time() - start_time))
     print(len(test_data))
-
-#     try:
-#         final_dict=get_final_dict_with_lime(model_path,test_data,topk=5)
-#     except OSError:
-#         exit()
-#     path_name_explanation='explanation_dicts/'+dataset+'_'+model_name+'_'+str(random_seed)+'_'+str(training_points)+'_rationale.json'
-#     with open(path_name_explanation, 'w') as fp:
-#         fp.write('\n'.join(json.dumps(i,cls=NumpyEncoder) for i in final_dict))
-

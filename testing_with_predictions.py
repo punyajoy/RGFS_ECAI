@@ -333,61 +333,9 @@ def standaloneEval(model_to_use, dataset_name, test_data=None, topk=2, rational=
     torch.cuda.empty_cache()
     return list_dict,test_data
 
-# def standaloneEval(model_to_use, dataset_name, test_data=None, topk=2, rational=False):
-#     reverse_dict={datasets_labels_map[dataset_name][key]:key for key in datasets_labels_map[dataset_name].keys()}
-    
-# #     if classes_in_dataset[dataset_name] == 2:
-# #         reverse_dict={0:'normal',1:'abusive'}
-# #     elif classes_in_dataset[dataset_name] == 3:
-# #         reverse_dict={0:'normal',1:'hateful', 2: 'abusive'}
-        
-#     tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased')
-    
-#     list_dict=[]
-#     modelClass=modelPred_lime(model_to_use)
-    
-#     sentences_all=[]
-#     for index,row in tqdm(test_data.iterrows(),total=len(test_data)):
-#         sentences_all.append(row['text'])
-    
-#     all_probab=modelClass.return_probab(sentences_all)
-#     for index,row in tqdm(test_data.iterrows(),total=len(test_data)):
-#         temp={}
-#         pred_id=np.argmax(all_probab[index])
-#         pred_label=reverse_dict[pred_id]
-#         ground_label=row['label']
-#         temp["annotation_id"]=0
-#         temp["classification"]=pred_label
-#         temp_preds={}
-#         for key in reverse_dict.keys():
-#             temp_preds[reverse_dict[key]]=all_probab[index][key]
-#         temp["classification_scores"]=temp_preds
-#         list_dict.append(temp)
-    
-#     del modelClass
-#     torch.cuda.empty_cache()
-#     return list_dict,test_data
-    
-    
-    
         
 def get_final_dict_with_lime(model_name, dataset_name, test_data, topk):
     list_dict_org,test_data=standaloneEval(model_name, dataset_name, test_data=test_data, topk=topk)
-#     test_data_with_rational=convert_data(test_data,params,list_dict_org,rational_present=True,topk=topk)
-#     list_dict_with_rational,_=standaloneEval(model_name,dataset_name,test_data=test_data_with_rational, topk=topk,rational=True)
-#     test_data_without_rational=convert_data(test_data,params,list_dict_org,rational_present=False,topk=topk)
-#     list_dict_without_rational,_=standaloneEval(model_name,dataset_name,test_data=test_data_without_rational, topk=topk,rational=True)
-#     
-#     for ele1,ele2,ele3 in zip(list_dict_org,list_dict_with_rational,list_dict_without_rational):
-#         ele1['sufficiency_classification_scores']=ele2['classification_scores']
-#         ele1['comprehensiveness_classification_scores']=ele3['classification_scores']
-#         final_list_dict.append(ele1)
-#     for ele1 in list_dict_org:
-#         ### these are just dummy results
-#         ele1['sufficiency_classification_scores']=ele1['classification_scores']
-#         ele1['comprehensiveness_classification_scores']=ele1['classification_scores']
-#         final_list_dict.append(ele1)
-
     return list_dict_org
 
 class NumpyEncoder(json.JSONEncoder):
@@ -446,22 +394,8 @@ if __name__ == '__main__':
     training_points=args.training_points
     random_seed=args.random_seed
     model_path=os.path.join('Saved_Models/Domain_Adapt_New/DA/', args.dataset_name, str(args.training_points), str(args.random_seed), args.model_name, 'model_weights.pt') #+dataset+'/'+model_name+'_'+str(training_points)+'_'+str(random_seed)
-
-    
-#     with open(dataset_path,'r') as infile:
-#         dict_map=json.load(infile)
-    
-    
-#     final_output=get_training_data(dict_map,model_path)
-#     test_data=pd.DataFrame(final_output,columns=['id','label','tokens','attention'])
-    
     test_data=pd.read_csv(dataset_path)
     final_dict=get_final_dict_with_lime(model_path, args.dataset_name, test_data, topk=5)
-    
-#     try:
-#         final_dict=get_final_dict_with_lime(model_path,test_data,topk=5)
-#     except OSError:
-#         exit()
     path_name_explanation='prediction_exp_dicts/'+dataset+'_'+model_name+'_'+str(random_seed)+'_'+str(training_points)+'.json'
     with open(path_name_explanation, 'w') as fp:
         fp.write('\n'.join(json.dumps(i,cls=NumpyEncoder) for i in final_dict))
