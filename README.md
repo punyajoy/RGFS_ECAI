@@ -1,4 +1,10 @@
-# :mag_right: Rationale-Guided Few-Shot Classification to Detect Abusive Language [Accepted at ECAI 2023]
+[![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2Fpunyajoy%2FRGFS_ECAI&count_bg=%2379C83D&title_bg=%23555555&icon=tinder.svg&icon_color=%23E7E7E7&title=hits&edge_flat=false)](https://hits.seeyoufarm.com)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](http://makeapullrequest.com)
+[![PyPI license](https://img.shields.io/pypi/l/ansicolortags.svg)](https://pypi.python.org/pypi/ansicolortags/)
+
+# :mag_right: :rocket: Rationale-Guided Few-Shot Classification to Detect Abusive Language [Accepted at ECAI 2023]
+
+### :tada: :tada: BERT for detecting abusive language(Hate speech+offensive) and predicting rationales is uploaded [here](https://huggingface.co/Hate-speech-CNERG/Rationale_predictor). Be sure to check it out :tada: :tada:.
 
 # Abstract
 
