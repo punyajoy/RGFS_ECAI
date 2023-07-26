@@ -384,7 +384,7 @@ def train_caller(params):
 
 #             rationale_predictor_model = Model_Rational_Label.from_pretrained("Saved_Models/Best_Toxic_BERT/BERT_toxic_rationale_10", params={'num_classes':3, 'rationale_impact':10,'target_impact':10,'targets_num':22},output_attentions = True,output_hidden_states = False).to(params['device'])
             rat_start_time = time.time()
-            rationale_predictor_model = Model_Rational_Label.from_pretrained("Saved_Models/Best_Toxic_BERT/BERT_toxic_rationale_target_2", params={'num_classes':2, 'rationale_impact':10,'target_impact':10,'targets_num':22},output_attentions = True,output_hidden_states = False).to(params['device'])
+            rationale_predictor_model = Model_Rational_Label.from_pretrained("rationale_predictor", params={'num_classes':2, 'rationale_impact':10,'target_impact':10,'targets_num':22},output_attentions = True,output_hidden_states = False).to(params['device'])
 
             rationale_predictor = modelPred(params=params, model=rationale_predictor_model)
             
@@ -476,39 +476,8 @@ if __name__ == "__main__":
     # print(args)
     index_to_model = {
         1: BertForSequenceClassification, # IMPORTANT
-        2: Transform_Rationale_SelfAttn_2Softmax_Drpt,
-        3: Transform_Rationale_CrossAttn_2Softmax_Drpt,
-        4: Transform_Rationale_CrossAttn_CLS_2Softmax_Drpt,
-        5: Transform_Rationale_Mask, 
-        6: Transform_Rationale_Mean, 
-        7: Transform_Rationale_CrossAttn_CLS_Drpt, 
-        8: Transform_RandomRationales_CrossAttn_CLS_Drpt, 
-        9: Transform_NoRationale_CrossAttn_CLS_Drpt, 
-        10: Transform_Rationale_SelfAttn_Drpt, 
-        11: Transform_Rationale_Mask_2,
-        12: Transform_Rationale_CrossAttn_CLS_Drpt_2,
-        13: Transform_Rationale_CrossAttn_CLS_Drpt_3,
-        14: Transform_NoRationale_SelfAttn_Drpt,
-        15: Transform_Rationale_CrossAttn_CLS_Drpt_exp,
         16: Transform_Rationale_CrossAttn_CLS_Drpt_corrected, # IMPORTANT
         17: Transform_Rationale_SelfAttn_Drpt_corrected, # IMPORTANT
-        18: Transform_SingleTransformer_Rationale_CrossAttn_CLS_Drpt,
-        19: Transform_Rationale_SelfAttn_Drpt_corrected_NormalizeLength,
-        20: Transform_Rationale_SelfAttn_Drpt_corrected_sigmoid,
-        21: Transform_Rationale_SelfAttn_Drpt_corrected_scaled,
-        22: Transform_Rationale_SelfAttn_Drpt_corrected_clssep,
-        23: Transform_Rationale_CrossAttn_CLS_Drpt_corrected_clssep,
-        24: Transform_Rationale_SelfAttn_Drpt_corrected_random_nonrationales_basile,
-        25: Transform_Rationale_SelfAttn_Drpt_corrected_random_nonrationales_olid,
-        26: Transform_Rationale_SelfAttn_Drpt_corrected_random_nonrationales_davidson,
-        27: Transform_Rationale_SelfAttn_Drpt_corrected_random_nonrationales_founta,
-        28: Transform_Rationale_SelfAttn_Drpt_corrected_random_nonrationales_waseem,
-        29: Transform_Rationale_CrossAttn_CLS_Drpt_corrected_random_nonrationales_basile,
-        30: Transform_Rationale_CrossAttn_CLS_Drpt_corrected_random_nonrationales_olid,
-        31: Transform_Rationale_CrossAttn_CLS_Drpt_corrected_random_nonrationales_davidson,
-        32: Transform_Rationale_CrossAttn_CLS_Drpt_corrected_random_nonrationales_founta,
-        33: Transform_Rationale_CrossAttn_CLS_Drpt_corrected_random_nonrationales_waseem,
-        34: Bert_C,
     }
     
     params['dataset'] = args.dataset

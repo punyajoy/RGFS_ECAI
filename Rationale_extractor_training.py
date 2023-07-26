@@ -9,7 +9,6 @@ import neptune.new as neptune
 import GPUtil
 import numpy as np
 from datasets import list_datasets, load_dataset
-from apiconfig import *
 import pandas as pd
 from tqdm import tqdm
 import argparse
@@ -232,7 +231,6 @@ def train(training_dataloader, validation_dataloader, test_dataloader, model, to
             
             
             
-        #if (macro_f1_val > best_macro_f1_val) or (macro_f1_val_rat > best_macro_f1_val_rat):
         if (macro_f1_val_rat > best_macro_f1_val_rat):
             best_macro_f1_val_rat=macro_f1_val_rat
             best_macro_f1_val = macro_f1_val
@@ -252,11 +250,7 @@ def train(training_dataloader, validation_dataloader, test_dataloader, model, to
                 best_rec_tar_test = rec_tar_test
             save_bert_model(model,tokenizer,params)
 
-################### Only for normal datasets
-            #save_bert_model(model.bert,tokenizer,params)
-#             best_model = copy.deepcopy(model)
-#             save_metrics(filepath, epoch_i, model, optimizer, weighted_f1)
-    
+   
     if(params['logging']!='local'):
         if(params['train_rationale']==True):
             run["rationale/test/best_f1"].log(best_macro_f1_rat_test)
@@ -351,12 +345,7 @@ if __name__ == "__main__":
                            type=int,
                            help='list id to be used')
     
-    my_parser.add_argument('gpuid',
-                           metavar='--i',
-                           type=int,
-                           help='gpu id to be used')
-    
-    
+   
     
     args = my_parser.parse_args()
     
@@ -370,45 +359,21 @@ if __name__ == "__main__":
     
     
     params=params_list[args.index]
-#     params['save_path']='Saved_Models/Best_Toxic_BERT/'   
     params['logging']='local'
     
-#     params['learning_rate_bert']=params['learning_rate']
-#     params['learning_rate_linear']=params['learning_rate']
-#     params['entropy_lambda']=1
-#     params['cache_path']='../Saved_models/'
     print(params)
     if torch.cuda.is_available() and params['device']=='cuda':    
         # Tell PyTorch to use the GPU.    
         device = torch.device("cuda")
-        ##### You can set the device manually if you have only one gpu
-        ##### comment this line if you don't want to manually set the gpu
-#         deviceID = get_gpu()
-#         torch.cuda.set_device(deviceID[0])
-        ##### comment this line if you want to manually set the gpu
-        #### required parameter is the gpu id
-        torch.cuda.set_device(args.gpuid)
-#        torch.cuda.set_device(0)
+        torch.cuda.set_device(0)
     else:
         print('Since you dont want to use GPU, using the CPU instead.')
         device = torch.device("cpu")
     
-    
-    run=None
-    if(params['logging']=='neptune'):
-        run = neptune.init(project=project_name,api_token=api_token)
-        params['iterations']=args.index
-        params['file']=args.path
-        
-        run["parameters"] = params
-        run["sys/tags"].add('Final_run_ICWSM')
-        
-    
+ 
     if(params['train_att']==params['train_rationale']==True):
         print("Cannot train both attention and NER rationale choose one ")
     else:
         train_caller(params,run)
-    if(run is not None):
-        run.stop()
     
     
