@@ -30,9 +30,9 @@ Abusive language is a concerning problem in online social media. Past research o
 ------------------------------------------
 ~~~
 
-./Data                --> Contains the dataset related files.
-./Models              --> Contains the codes for all the classifiers used
-./Preprocess  	      --> Contains the codes for preprocessing the dataset	
-./best_model_json     --> Contains the parameter values for the best models
-
+./Data_code           --> Contains the dataset codes used for extracting and preprocessing the dataset.
+./Models              --> Contains the codes for all the  classifier used for the models
+./Eval_code  	        --> Contains the evaluation scripts for the classifier modules	
+./Datasets            --> Contains the datasets once they are downloaded using the data repository
+./Saved_Models        --> Contains the saved models during the training procedure
 ~~~
