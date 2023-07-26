@@ -1,0 +1,2 @@
+Please download the data.zip from this location https://osf.io/swdm8/?view_only=3e41f816ae964cbb90d4b57d5c48b33f and extract in this folder.
+This contains all the train-validation-test splits along with the few shot setting information
