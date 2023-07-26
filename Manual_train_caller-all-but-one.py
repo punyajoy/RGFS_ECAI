@@ -5,21 +5,19 @@ from Model_code.models import *
 from Model_code.utils import *
 from Eval_code.eval_scripts import *
 from transformers import AutoTokenizer, AutoModelForTokenClassification, AdamW, get_linear_schedule_with_warmup
-import neptune.new as neptune
-import GPUtil
 import numpy as np
 from datasets import list_datasets, load_dataset
-from apiconfig import *
 import pandas as pd
 from tqdm import tqdm
 import argparse
 import json
 import time
-## training_type can take normal, domain_adap, domain_adap_ssda
-## dataset Hatexplain, Founta, Davidson, Basile, Waseem, Olid
-## model_path: model path as given in the huggingface
-## logging: 'neptune' or 'local' (for printing the updates here)
-## model_type: 'c' for classifier, 'r' is for rational_classifier, 't' is for target_classifier
+
+# This code for training of the model according the models made famous in the ECML-PKDD paper  "A deep dive into multilingual hate speech classification". 
+# Where all other datasets are used for training the model except the target dataset. Later we use few shots from the target datasets to train the final model in a few shot setting.
+
+# all the important parameters required for the project
+
 
 params={
  'dataset_original':'Davidson',
@@ -42,20 +40,6 @@ params={
  'train_att':False,
  'save_path':'Saved_Models/Best_Toxic_BERT/'   
 }
-
-
-def get_gpu():
-    print('There are %d GPU(s) available.' % torch.cuda.device_count())
-    while(1):
-        tempID = [] 
-        tempID = GPUtil.getAvailable(order = 'memory', limit = 1, maxLoad = 0.9, maxMemory = 0.7, includeNan=False, excludeID=[], excludeUUID=[])
-        if len(tempID) > 0:
-            print("Found a gpu")
-            print('We will use the GPU:',tempID[0],torch.cuda.get_device_name(tempID[0]))
-            deviceID=tempID
-            return deviceID
-        else:
-            time.sleep(5)
 
 
 def return_target_dict(train_dataset,valid_dataset,test_dataset, threshold=20):
@@ -192,45 +176,19 @@ def train(training_dataloader, validation_dataloader, test_dataloader, model, to
             macro_f1_test_tar,accuracy_test_tar, pre_tar_test, rec_tar_test = evaluate_target_classifier(test_dataloader, params,model,device)
             
         
-        if(params['logging']=='neptune'):
-            #### val scores updated
-            run["label/val/f1"].log(macro_f1_val)
-            run["label/val/accuracy"].log(accuracy_val)
-            run["label/val/positive_class_precision"].log(pre_val)
-            run["label/val/positive_class_recall"].log(rec_val)
-            
-            #### test scores updated
-            run["label/test/f1"].log(macro_f1_test)
-            run["label/test/accuracy"].log(accuracy_test)
-            run["label/test/positive_class_precision"].log(pre_test)
-            run["label/test/positive_class_recall"].log(rec_test)
-            
-            if(params['train_rationale']==True):
-                #### val rationale updated
-                run["rationale/val/f1"].log(macro_f1_val_rat)
-                run["rationale/val/accuracy"].log(accuracy_val_rat)
-                run["rationale/val/positive_class_precision"].log(pre_rat_val)
-                run["rationale/val/positive_class_recall"].log(rec_rat_val)
-
-                #### test rational updated
-                run["rationale/test/f1"].log(macro_f1_test_rat)
-                run["rationale/test/accuracy"].log(accuracy_test_rat)
-                run["rationale/test/positive_class_precision"].log(pre_rat_test)
-                run["rationale/test/positive_class_recall"].log(rec_rat_test)
-            
-        else:
-            print("  Macro F1 Val: {0:.3f}".format(macro_f1_val))
-            print("  Macro F1 Test: {0:.3f}".format(macro_f1_test))
-            
-            if(params['train_rationale']==True):
-                    print("  Macro F1 Rationale Val: {0:.3f}".format(macro_f1_val_rat))
-                    print("  Macro F1 Rationale Test: {0:.3f}".format(macro_f1_test_rat))
-            
-            if(params['train_targets']==True):
-                    print("  Macro F1 Target Val: {0:.3f}".format(macro_f1_val_tar))
-                    print("  Macro F1 Target Test: {0:.3f}".format(macro_f1_test_tar))
-            
-            
+        
+        print("  Macro F1 Val: {0:.3f}".format(macro_f1_val))
+        print("  Macro F1 Test: {0:.3f}".format(macro_f1_test))
+        
+        if(params['train_rationale']==True):
+                print("  Macro F1 Rationale Val: {0:.3f}".format(macro_f1_val_rat))
+                print("  Macro F1 Rationale Test: {0:.3f}".format(macro_f1_test_rat))
+        
+        if(params['train_targets']==True):
+                print("  Macro F1 Target Val: {0:.3f}".format(macro_f1_val_tar))
+                print("  Macro F1 Target Test: {0:.3f}".format(macro_f1_test_tar))
+        
+        
             
         if (macro_f1_val > best_macro_f1_val):
             #best_macro_f1_val_rat=macro_f1_val_rat
@@ -251,40 +209,18 @@ def train(training_dataloader, validation_dataloader, test_dataloader, model, to
                 best_rec_tar_test = rec_tar_test
             save_bert_model_all_but_one(model,tokenizer,params)
 
-################### Only for normal datasets
-            #save_bert_model(model.bert,tokenizer,params)
+    print("  Macro F1 Test: {0:.3f}".format(best_macro_f1_test))
+    print("  Accuracy Test: {0:.3f}".format(best_accuracy_test))
 
+    if(params['train_rationale']==True):
+        print("  Macro F1 Rationale Test: {0:.3f}".format(best_macro_f1_rat_test))
+        print("  Accuracy Rationale Test: {0:.3f}".format(best_acc_rat_test))
 
+    if(params['train_targets']==True):
+        print("  Macro F1 Target Test: {0:.3f}".format(best_macro_f1_tar_test))
+        print("  Accuracy Target Test: {0:.3f}".format(best_acc_tar_test))
 
-#             best_model = copy.deepcopy(model)
-#             save_metrics(filepath, epoch_i, model, optimizer, weighted_f1)
-    
-    if(params['logging']!='local'):
-        if(params['train_rationale']==True):
-            run["rationale/test/best_f1"].log(best_macro_f1_rat_test)
-            run["rationale/test/best_accuracy"].log(best_acc_rat_test)
-            run["rationale/test/best_positive_class_precision"].log(best_pre_rat_test)
-            run["rationale/test/best_positive_class_recall"].log(best_rec_rat_test)        
-
-            
-        run["label/test/best_f1"].log(best_macro_f1_test)
-        run["label/test/best_accuracy"].log(best_accuracy_test)
-        run["label/test/best_positive_class_precision"].log(best_pre_test)
-        run["label/test/best_positive_class_recall"].log(best_rec_test)        
-
-    else:
-        print("  Macro F1 Test: {0:.3f}".format(best_macro_f1_test))
-        print("  Accuracy Test: {0:.3f}".format(best_accuracy_test))
-
-        if(params['train_rationale']==True):
-            print("  Macro F1 Rationale Test: {0:.3f}".format(best_macro_f1_rat_test))
-            print("  Accuracy Rationale Test: {0:.3f}".format(best_acc_rat_test))
-
-        if(params['train_targets']==True):
-            print("  Macro F1 Target Test: {0:.3f}".format(best_macro_f1_tar_test))
-            print("  Accuracy Target Test: {0:.3f}".format(best_acc_tar_test))
-
-            
+        
             
             
             
@@ -321,14 +257,6 @@ def train_caller(params,dataset,run=None):
             val_data_source = Normal_Dataset(valid_data,params,tokenizer)
             test_data_source = Normal_Dataset(test_data,params,tokenizer)
             print(len(train_data_source.DataLoader),len(val_data_source.DataLoader),len(test_data_source.DataLoader))
-#             model = Model_with_labels(768, 2, params).to(device)
-#             train(train_data_source.DataLoader, val_data_source.DataLoader, test_data_source.DataLoader,model, params,run)
-#         if(params['train_rationale']==True):
-#             model = Model_Rational_Label_SSDA.from_pretrained(params['model_path'], cache_dir=params['cache_path'],params=params,output_attentions = True,output_hidden_states = False).to(device)
-#         elif(params['train_att']==True):
-#             model = Model_Attention_Label_SSDA.from_pretrained(params['model_path'], cache_dir=params['cache_path'],params=params,output_attentions = True,output_hidden_states = False).to(device)
-#         else:
-#             model = Model_Label_SSDA.from_pretrained(params['model_path'], cache_dir=params['cache_path'],params=params,output_attentions = True,output_hidden_states = False).to(device)
 
     
         if(params['train_rationale']==True):
@@ -336,8 +264,10 @@ def train_caller(params,dataset,run=None):
         elif(params['train_att']==True):
             model = Model_Attention_Label.from_pretrained(params['model_path'], cache_dir=params['cache_path'],params=params,output_attentions = True,output_hidden_states = False).to(device)
         else:
-            model = Model_Label.from_pretrained(params['model_path'], cache_dir=params['cache_path'],params=params,output_attentions = True,output_hidden_states = False).to(device)
-        
+            try:
+                model = Model_Label.from_pretrained(params['model_path'], cache_dir=params['cache_path'],params=params,output_attentions = True,output_hidden_states = False).to(device)
+            except KeyError:
+                model = Model_Label.from_pretrained('bert-base-uncased', cache_dir=params['cache_path'],params=params,output_attentions = False,output_hidden_states = False).to(device)
         train(train_data_source.DataLoader, val_data_source.DataLoader,test_data_source.DataLoader,model,tokenizer,params,run)
         
 
@@ -359,11 +289,6 @@ if __name__ == "__main__":
                            type=str,
                            help='The dataset to not consider')
     
-#     my_parser.add_argument('index',
-#                            metavar='--i',
-#                            type=int,
-#                            help='list id to be used')
-    
     my_parser.add_argument('gpuid',
                            metavar='--i',
                            type=int,
@@ -373,14 +298,6 @@ if __name__ == "__main__":
     
     args = my_parser.parse_args()
     
-#     with open(args.path,mode='r') as f:
-#             params_list = json.load(f)
-    
-#     file_done='Done/'+args.path.split('/')[1][:-5]+'_done.json'
-#     with open(file_done,mode='r') as f:
-#          list_done = json.load(f)
-#     if(args.index in list_done):
-#         exit()
     
     RANDOM_SEED = params['data_seed']
     random_seed(RANDOM_SEED, True)
@@ -391,36 +308,15 @@ if __name__ == "__main__":
     #params=params_list[args.index]
     params['save_path']='Saved_Models/Best_Toxic_BERT/'   
     params['logging']='local'
-    
-#     params['learning_rate_bert']=params['learning_rate']
-#     params['learning_rate_linear']=params['learning_rate']
-#     params['entropy_lambda']=1
-#     params['cache_path']='../Saved_models/'
     print(params)
     if torch.cuda.is_available() and params['device']=='cuda':    
         # Tell PyTorch to use the GPU.    
         device = torch.device("cuda")
-        ##### You can set the device manually if you have only one gpu
-        ##### comment this line if you don't want to manually set the gpu
-#         deviceID = get_gpu()
-#         torch.cuda.set_device(deviceID[0])
-        ##### comment this line if you want to manually set the gpu
-        #### required parameter is the gpu id
-        torch.cuda.set_device(args.gpuid)
-#        torch.cuda.set_device(0)
+        torch.cuda.set_device(0)
     else:
         print('Since you dont want to use GPU, using the CPU instead.')
         device = torch.device("cpu")
     
-    
-    run=None
-    if(params['logging']=='neptune'):
-        run = neptune.init(project=project_name,api_token=api_token)
-        params['iterations']=args.index
-        params['file']=args.path
-        
-        run["parameters"] = params
-        run["sys/tags"].add('Final_run_ICWSM')
         
     
     if(params['train_att']==params['train_rationale']==True):
@@ -432,9 +328,3 @@ if __name__ == "__main__":
                 train_caller(params,dataset,run)
                 params['model_path']='Saved_Models/Best_Toxic_BERT/'+params['dataset_original']+'_all_but_one_BERT_toxic_label'
         
-        
-        
-    if(run is not None):
-        run.stop()
-    
-    
