@@ -14,11 +14,7 @@ from tqdm import tqdm
 import argparse
 import json
 import time
-## training_type can take normal, domain_adap, domain_adap_ssda
-## dataset Hatexplain, Founta, Davidson
-## model_path: model path as given in the huggingface
-## logging: 'neptune' or 'local' (for printing the updates here)
-## model_type: 'c' for classifier, 'r' is for rational_classifier, 't' is for target_classifier
+
 
 params={
  'dataset':'Davidson',
@@ -43,20 +39,7 @@ params={
 }
 
 
-def get_gpu():
-    print('There are %d GPU(s) available.' % torch.cuda.device_count())
-    while(1):
-        tempID = [] 
-        tempID = GPUtil.getAvailable(order = 'memory', limit = 1, maxLoad = 0.9, maxMemory = 0.7, includeNan=False, excludeID=[], excludeUUID=[])
-        if len(tempID) > 0:
-            print("Found a gpu")
-            print('We will use the GPU:',tempID[0],torch.cuda.get_device_name(tempID[0]))
-            deviceID=tempID
-            return deviceID
-        else:
-            time.sleep(5)
-
-
+# return the target dictionary for the hatexplain dataset
 def return_target_dict(train_dataset,valid_dataset,test_dataset, threshold=20):
     label_dict={}
     for row in train_dataset:
@@ -93,13 +76,12 @@ def return_target_dict(train_dataset,valid_dataset,test_dataset, threshold=20):
         if label_dict[target] >= 20:
             target_dict[target]=j
             j+=1
-    #target_dict['Other']=j
      
     return target_dict
 
     
 
-def train(training_dataloader, validation_dataloader, test_dataloader, model, tokenizer, params,run):
+def train(training_dataloader, validation_dataloader, test_dataloader, model, tokenizer, params):
     epochs=params['epochs']
     total_steps = len(training_dataloader) * epochs
     no_decay = ['bias', 'LayerNorm.weight', 'LayerNorm.bias']
@@ -166,9 +148,7 @@ def train(training_dataloader, validation_dataloader, test_dataloader, model, to
             if(params['logging']=='local'):
                 if step%100 == 0:
                     print(loss.item())
-            else:
-                run["train/batch_loss"].log(loss.item())
-
+            
             optimizer.zero_grad()
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
@@ -191,46 +171,21 @@ def train(training_dataloader, validation_dataloader, test_dataloader, model, to
             macro_f1_test_tar,accuracy_test_tar, pre_tar_test, rec_tar_test = evaluate_target_classifier(test_dataloader, params,model,device)
             
         
-        if(params['logging']=='neptune'):
-            #### val scores updated
-            run["label/val/f1"].log(macro_f1_val)
-            run["label/val/accuracy"].log(accuracy_val)
-            run["label/val/positive_class_precision"].log(pre_val)
-            run["label/val/positive_class_recall"].log(rec_val)
-            
-            #### test scores updated
-            run["label/test/f1"].log(macro_f1_test)
-            run["label/test/accuracy"].log(accuracy_test)
-            run["label/test/positive_class_precision"].log(pre_test)
-            run["label/test/positive_class_recall"].log(rec_test)
-            
-            if(params['train_rationale']==True):
-                #### val rationale updated
-                run["rationale/val/f1"].log(macro_f1_val_rat)
-                run["rationale/val/accuracy"].log(accuracy_val_rat)
-                run["rationale/val/positive_class_precision"].log(pre_rat_val)
-                run["rationale/val/positive_class_recall"].log(rec_rat_val)
-
-                #### test rational updated
-                run["rationale/test/f1"].log(macro_f1_test_rat)
-                run["rationale/test/accuracy"].log(accuracy_test_rat)
-                run["rationale/test/positive_class_precision"].log(pre_rat_test)
-                run["rationale/test/positive_class_recall"].log(rec_rat_test)
-            
-        else:
-            print("  Macro F1 Val: {0:.3f}".format(macro_f1_val))
-            print("  Macro F1 Test: {0:.3f}".format(macro_f1_test))
-            
-            if(params['train_rationale']==True):
-                    print("  Macro F1 Rationale Val: {0:.3f}".format(macro_f1_val_rat))
-                    print("  Macro F1 Rationale Test: {0:.3f}".format(macro_f1_test_rat))
-            
-            if(params['train_targets']==True):
-                    print("  Macro F1 Target Val: {0:.3f}".format(macro_f1_val_tar))
-                    print("  Macro F1 Target Test: {0:.3f}".format(macro_f1_test_tar))
+        
+        print("  Macro F1 Val: {0:.3f}".format(macro_f1_val))
+        print("  Macro F1 Test: {0:.3f}".format(macro_f1_test))
+        
+        if(params['train_rationale']==True):
+                print("  Macro F1 Rationale Val: {0:.3f}".format(macro_f1_val_rat))
+                print("  Macro F1 Rationale Test: {0:.3f}".format(macro_f1_test_rat))
+        
+        if(params['train_targets']==True):
+                print("  Macro F1 Target Val: {0:.3f}".format(macro_f1_val_tar))
+                print("  Macro F1 Target Test: {0:.3f}".format(macro_f1_test_tar))
+        
             
             
-            
+        #if (macro_f1_val > best_macro_f1_val) or (macro_f1_val_rat > best_macro_f1_val_rat):
         if (macro_f1_val_rat > best_macro_f1_val_rat):
             best_macro_f1_val_rat=macro_f1_val_rat
             best_macro_f1_val = macro_f1_val
@@ -248,33 +203,25 @@ def train(training_dataloader, validation_dataloader, test_dataloader, model, to
                 best_macro_f1_tar_test =macro_f1_test_tar
                 best_pre_tar_test = pre_tar_test
                 best_rec_tar_test = rec_tar_test
+
+
             save_bert_model(model,tokenizer,params)
 
-   
-    if(params['logging']!='local'):
-        if(params['train_rationale']==True):
-            run["rationale/test/best_f1"].log(best_macro_f1_rat_test)
-            run["rationale/test/best_accuracy"].log(best_acc_rat_test)
-            run["rationale/test/best_positive_class_precision"].log(best_pre_rat_test)
-            run["rationale/test/best_positive_class_recall"].log(best_rec_rat_test)        
+################### Only for normal datasets
+            #save_bert_model(model.bert,tokenizer,params)
+#             best_model = copy.deepcopy(model)
+#             save_metrics(filepath, epoch_i, model, optimizer, weighted_f1)
+    
+    print("  Macro F1 Test: {0:.3f}".format(best_macro_f1_test))
+    print("  Accuracy Test: {0:.3f}".format(best_accuracy_test))
 
-            
-        run["label/test/best_f1"].log(best_macro_f1_test)
-        run["label/test/best_accuracy"].log(best_accuracy_test)
-        run["label/test/best_positive_class_precision"].log(best_pre_test)
-        run["label/test/best_positive_class_recall"].log(best_rec_test)        
+    if(params['train_rationale']==True):
+        print("  Macro F1 Rationale Test: {0:.3f}".format(best_macro_f1_rat_test))
+        print("  Accuracy Rationale Test: {0:.3f}".format(best_acc_rat_test))
 
-    else:
-        print("  Macro F1 Test: {0:.3f}".format(best_macro_f1_test))
-        print("  Accuracy Test: {0:.3f}".format(best_accuracy_test))
-
-        if(params['train_rationale']==True):
-            print("  Macro F1 Rationale Test: {0:.3f}".format(best_macro_f1_rat_test))
-            print("  Accuracy Rationale Test: {0:.3f}".format(best_acc_rat_test))
-
-        if(params['train_targets']==True):
-            print("  Macro F1 Target Test: {0:.3f}".format(best_macro_f1_tar_test))
-            print("  Accuracy Target Test: {0:.3f}".format(best_acc_tar_test))
+    if(params['train_targets']==True):
+        print("  Macro F1 Target Test: {0:.3f}".format(best_macro_f1_tar_test))
+        print("  Accuracy Target Test: {0:.3f}".format(best_acc_tar_test))
 
             
             
@@ -284,7 +231,7 @@ def train(training_dataloader, validation_dataloader, test_dataloader, model, to
             
             
 
-def train_caller(params,run=None):
+def train_caller(params):
     if(params['training_type']=='normal'):
         tokenizer = AutoTokenizer.from_pretrained(params['model_path'], use_fast=False, cache_dir=params['cache_path'])
         ### add model loading code 
@@ -345,7 +292,6 @@ if __name__ == "__main__":
                            type=int,
                            help='list id to be used')
     
-   
     
     args = my_parser.parse_args()
     
@@ -359,6 +305,7 @@ if __name__ == "__main__":
     
     
     params=params_list[args.index]
+#     params['save_path']='Saved_Models/Best_Toxic_BERT/'   
     params['logging']='local'
     
     print(params)
@@ -370,10 +317,10 @@ if __name__ == "__main__":
         print('Since you dont want to use GPU, using the CPU instead.')
         device = torch.device("cpu")
     
- 
+    
+    
     if(params['train_att']==params['train_rationale']==True):
         print("Cannot train both attention and NER rationale choose one ")
     else:
-        train_caller(params,run)
-    
+        train_caller(params)
     
